@@ -1,0 +1,404 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-display);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100svh;
+    background: var(--paper);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+:root {
+  /* FueledInbox brand palette */
+  --brand-navy: #0a3b9e;
+  --brand-blue: #1d5cc8;
+  --brand-blue-light: #3e7de0;
+  --brand-blue-soft: #6fa3f0;
+  --brand-ink: #3c3c3c;
+  --brand-white: #ffffff;
+
+  --ink: #101828;
+  --ink-soft: #4b5259;
+  --paper: #f7f8f6;
+  --paper-raised: #ffffff;
+  --jade: #1f6f5c;
+  --jade-dark: #165445;
+  --jade-soft: #e4f0ec;
+  --amber: #b7791f;
+  --amber-soft: #fbf0de;
+  --coral: #c4432b;
+  --coral-soft: #fbeae6;
+  --line: #e2e4df;
+  --shadow-card:
+    0 1px 2px rgba(16, 24, 40, 0.03), 0 10px 28px rgba(16, 24, 40, 0.04);
+  --shadow-float: 0 18px 48px rgba(16, 24, 40, 0.12);
+  --focus-ring: 0 0 0 4px rgba(31, 111, 92, 0.14);
+}
+
+.dark {
+  --ink: #edf5f1;
+  --ink-soft: #a7b9b1;
+  --paper: #101917;
+  --paper-raised: #17231f;
+  --jade: #55b398;
+  --jade-dark: #86d5bc;
+  --jade-soft: #1d4035;
+  --amber: #e3b45f;
+  --amber-soft: #3d301b;
+  --coral: #ff8f7c;
+  --coral-soft: #41221f;
+  --line: #2a3a34;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 30px rgba(0, 0, 0, 0.14);
+  --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --focus-ring: 0 0 0 4px rgba(85, 179, 152, 0.2);
+}
+
+@layer components {
+  .surface-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .surface-panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+  }
+
+  .eyebrow {
+    color: var(--jade);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1rem;
+    text-transform: uppercase;
+  }
+
+  .page-title {
+    color: var(--ink);
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+  }
+}
+
+.chat-bubble {
+  opacity: 0;
+  animation: fadeSlideIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--jade-soft);
+  color: var(--jade-dark);
+}
+
+:focus-visible {
+  outline: 2px solid var(--jade);
+  outline-offset: 2px;
+}
+
+.auth-field:focus {
+  border-color: var(--jade) !important;
+  box-shadow: 0 0 0 4px rgba(31, 111, 92, 0.12);
+}
+
+.auth-field[data-invalid="true"]:focus {
+  border-color: var(--coral) !important;
+  box-shadow: 0 0 0 4px rgba(196, 67, 43, 0.12);
+}
+
+.landing-page {
+  isolation: isolate;
+  min-height: 100svh;
+  overflow-x: clip;
+}
+
+section[id] {
+  scroll-margin-top: 6rem;
+}
+
+.landing-grid {
+  background-image: linear-gradient(rgba(31, 111, 92, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(31, 111, 92, 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, 0.65) 42%, transparent 92%);
+}
+
+.landing-orb {
+  animation: landingFloat 11s ease-in-out infinite;
+}
+
+.landing-orb-delay {
+  animation-delay: -4s;
+  animation-duration: 14s;
+}
+
+.landing-reveal {
+  animation: landingReveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-reveal-delay {
+  animation-delay: 0.14s;
+}
+
+.landing-window {
+  animation: landingWindow 7s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.landing-float {
+  animation: landingFloat 5.5s ease-in-out infinite;
+}
+
+.landing-float-delay {
+  animation-delay: -2.4s;
+  animation-duration: 6.5s;
+}
+
+.landing-chat {
+  animation: landingChat 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-chat-one { animation-delay: 0.65s; }
+.landing-chat-two { animation-delay: 1.05s; }
+.landing-chat-three { animation-delay: 1.45s; }
+
+.landing-pulse-dot {
+  animation: landingPulse 2s ease-in-out infinite;
+}
+
+.landing-scan {
+  animation: landingScan 5s ease-in-out infinite;
+}
+
+.landing-feature,
+.landing-step {
+  animation: landingReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-feature:hover {
+  transform: translateY(-6px);
+  transition: transform 240ms ease, box-shadow 240ms ease;
+  box-shadow: var(--shadow-float);
+}
+
+.landing-ring {
+  animation: landingSpin 18s linear infinite;
+}
+
+.landing-cta {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-cta-dot {
+  animation: landingFloat 8s ease-in-out infinite;
+}
+
+@keyframes landingReveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes landingFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -12px, 0); }
+}
+
+@keyframes landingWindow {
+  0%, 100% { transform: perspective(1200px) rotateX(0deg) rotateY(0deg); }
+  50% { transform: perspective(1200px) rotateX(1deg) rotateY(-1deg); }
+}
+
+@keyframes landingChat {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes landingPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(31, 111, 92, 0.28); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 7px rgba(31, 111, 92, 0); }
+}
+
+@keyframes landingScan {
+  0% { transform: translateX(-80%); opacity: 0; }
+  20%, 70% { opacity: 1; }
+  100% { transform: translateX(180%); opacity: 0; }
+}
+
+@keyframes landingSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-orb,
+  .landing-window,
+  .landing-float,
+  .landing-chat,
+  .landing-pulse-dot,
+  .landing-scan,
+  .landing-feature,
+  .landing-step,
+  .landing-ring,
+  .landing-cta-dot {
+    animation: none;
+  }
+
+  .landing-feature:hover { transform: none; }
+}

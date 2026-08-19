@@ -1,0 +1,770 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum AccountRole {
+  OWNER
+  ADMIN
+  AGENT
+  VIEWER
+  // Platform-wide super admin. A SUPER_ADMIN belongs to an account row (to
+  // satisfy the User.accountId FK) but the platform-admin UI/actions bypass
+  // account scoping and operate across every account on the SaaS.
+  SUPER_ADMIN
+}
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+enum SenderType {
+  CUSTOMER
+  AGENT
+  BOT
+}
+
+enum ContentType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+  LOCATION
+  TEMPLATE
+  INTERACTIVE
+  STICKER
+  CONTACT
+}
+
+enum MessageStatus {
+  SENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  REPLIED
+  FAILED
+}
+
+model User {
+  id          String      @id @default(cuid())
+  name        String?
+  email       String      @unique
+  password    String
+  avatarUrl   String?
+  accountId   String
+  accountRole AccountRole @default(AGENT)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  account               Account             @relation("AccountMembers", fields: [accountId], references: [id], onDelete: Cascade)
+  assignedConversations Conversation[]      @relation("AssignedAgent")
+  createdContacts       Contact[]           @relation("ContactCreator")
+  createdBroadcasts     Broadcast[]         @relation("BroadcastCreator")
+  createdInvitations    AccountInvitation[] @relation("InvitationCreator")
+  acceptedInvitations   AccountInvitation[] @relation("InvitationAccepter")
+  notes                 ContactNote[]
+  passwordResetTokens   PasswordResetToken[]
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  quotaPurchases        QuotaPurchase[] @relation("QuotaPurchaseCreator")
+
+  @@index([accountId])
+  @@map("users")
+}
+
+model Account {
+  id              String   @id @default(cuid())
+  name            String
+  ownerUserId     String   @unique
+  defaultCurrency String   @default("INR")
+
+  // Platform-admin / quota state. Every new account starts on the FREE plan
+  // with a lifetime message quota of 10; the platform admin can raise it to a
+  // custom count based on what the customer bought. A future subscription &
+  // billing system can back-fill these fields (planType is the seam).
+  status       String  @default("ACTIVE") // ACTIVE | SUSPENDED
+  planType     String  @default("FREE")   // FREE | CUSTOM | (future) SUBSCRIBED
+  messageQuota Int     @default(10)
+  messagesUsed Int     @default(0)
+  adminNotes   String? @db.Text
+  // Validity of the current quota/plan (e.g. "paid for 1 year"). Null = no
+  // expiry (lifetime). Quota purchases extend/record this on QuotaPurchase.
+  quotaValidUntil DateTime?
+  currency         String  @default("INR")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members          User[]              @relation("AccountMembers")
+  invitations      AccountInvitation[]
+  contacts         Contact[]
+  contactCategories ContactCategory[]
+  conversations    Conversation[]
+  whatsappConfig   WhatsAppConfig?
+  automations      Automation[]
+  tags             Tag[]
+  customFields     CustomField[]
+  messageTemplates MessageTemplate[]
+  broadcasts       Broadcast[]
+  apiKeys          ApiKey[]
+  otpChallenges    OtpChallenge[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  usageLogs        MessageUsageLog[]
+  quotaPurchases   QuotaPurchase[]
+
+  pipelines Pipeline[]
+  deals     Deal[]
+
+  @@index([status])
+  @@index([planType])
+  @@index([createdAt])
+  @@map("accounts")
+}
+
+model AccountInvitation {
+  id               String      @id @default(cuid())
+  accountId        String
+  tokenHash        String      @unique
+  role             AccountRole // app layer rejects OWNER here
+  createdByUserId  String?
+  label            String?
+  createdAt        DateTime    @default(now())
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  acceptedByUserId String?
+
+  account    Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdBy  User?   @relation("InvitationCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  acceptedBy User?   @relation("InvitationAccepter", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, expiresAt])
+  @@map("account_invitations")
+}
+
+model Contact {
+  id              String   @id @default(cuid())
+  accountId       String
+  createdByUserId String?
+  name            String?
+  phone           String
+  phoneNormalized String
+  email           String?
+  company         String?
+  category        String   @default("LEAD")
+  avatarUrl       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  account             Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdBy           User?                @relation("ContactCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  conversations       Conversation[]
+  broadcastRecipients BroadcastRecipient[]
+  tags                ContactTag[]
+  customValues        ContactCustomValue[]
+  notes               ContactNote[]
+  deals               Deal[]
+  otpChallenges       OtpChallenge[]
+
+  @@unique([accountId, phoneNormalized])
+  @@index([accountId])
+  @@index([accountId, category])
+  @@map("contacts")
+}
+
+model Conversation {
+  id              String             @id @default(cuid())
+  accountId       String
+  contactId       String
+  assignedAgentId String?
+  status          ConversationStatus @default(OPEN)
+  lastMessageText String?            @db.Text
+  lastMessageAt   DateTime?
+  unreadCount     Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contact       Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignedAgent User?     @relation("AssignedAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  messages      Message[]
+
+  @@index([accountId])
+  @@index([contactId])
+  @@map("conversations")
+}
+
+model Message {
+  id                 String        @id @default(cuid())
+  conversationId     String
+  senderType         SenderType
+  senderId           String?
+  contentType        ContentType   @default(TEXT)
+  contentText        String?       @db.Text
+  mediaUrl           String?
+  templateName       String?
+  whatsappMessageId  String?
+  status             MessageStatus @default(SENT)
+  createdAt          DateTime      @default(now())
+  replyToMessageId   String?
+  interactiveReplyId String?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  replyTo      Message?     @relation("MessageReply", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies      Message[]    @relation("MessageReply")
+
+  errorMessage String? @db.Text
+  metadata     Json?
+
+  @@index([conversationId])
+  @@index([whatsappMessageId])
+  @@map("messages")
+}
+
+model Broadcast {
+  id                String          @id @default(cuid())
+  accountId         String
+  createdByUserId   String?
+  messageTemplateId String?
+  name              String
+  templateName      String
+  templateLanguage  String
+  variableMapping   Json?
+  audienceFilter    Json?
+  scheduledAt       DateTime?
+  status            BroadcastStatus @default(DRAFT)
+  totalRecipients   Int             @default(0)
+  sentCount         Int             @default(0)
+  deliveredCount    Int             @default(0)
+  readCount         Int             @default(0)
+  repliedCount      Int             @default(0)
+  failedCount       Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  account    Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdBy  User?                @relation("BroadcastCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  template   MessageTemplate?     @relation(fields: [messageTemplateId], references: [id], onDelete: SetNull)
+  recipients BroadcastRecipient[]
+
+  @@index([accountId])
+  @@map("broadcasts")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  accountId String
+  name      String
+  color     String   @default("#1F6F5C")
+  createdAt DateTime @default(now())
+
+  account  Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contacts ContactTag[]
+
+  @@unique([accountId, name])
+  @@map("tags")
+}
+
+// User-defined contact categories. A contact stores the category name in
+// `Contact.category`; this table defines the valid categories per account.
+model ContactCategory {
+  id        String   @id @default(cuid())
+  accountId String
+  name      String
+  color     String   @default("#1D5CC8")
+  createdAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, name])
+  @@index([accountId])
+  @@map("contact_categories")
+}
+
+model ContactTag {
+  id        String @id @default(cuid())
+  contactId String
+  tagId     String
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, tagId])
+  @@map("contact_tags")
+}
+
+enum AutomationTrigger {
+  NEW_MESSAGE_RECEIVED
+  FIRST_MESSAGE_FROM_CONTACT
+  KEYWORD_MATCH
+  NEW_CONTACT_CREATED
+  CONVERSATION_ASSIGNED
+  TAG_ADDED
+}
+
+enum AutomationStepType {
+  SEND_MESSAGE
+  ADD_TAG
+  REMOVE_TAG
+  UPDATE_CONTACT_FIELD
+  ASSIGN_CONVERSATION
+  WAIT
+  CONDITION
+  SEND_WEBHOOK
+  CLOSE_CONVERSATION
+}
+
+enum AutomationBranch {
+  YES
+  NO
+}
+
+enum PendingExecutionStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+model Automation {
+  id             String            @id @default(cuid())
+  accountId      String
+  name           String
+  triggerType    AutomationTrigger
+  triggerConfig  Json?
+  isActive       Boolean           @default(false)
+  executionCount Int               @default(0)
+  lastExecutedAt DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  account           Account                      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  steps             AutomationStep[]
+  logs              AutomationLog[]
+  pendingExecutions AutomationPendingExecution[]
+
+  @@index([accountId, triggerType])
+  @@map("automations")
+}
+
+model AutomationStep {
+  id           String             @id @default(cuid())
+  automationId String
+  parentStepId String?
+  branch       AutomationBranch?
+  stepType     AutomationStepType
+  config       Json
+  position     Int
+
+  automation Automation       @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  parent     AutomationStep?  @relation("StepBranches", fields: [parentStepId], references: [id], onDelete: Cascade)
+  children   AutomationStep[] @relation("StepBranches")
+
+  @@index([automationId, position])
+  @@index([parentStepId])
+  @@map("automation_steps")
+}
+
+model AutomationLog {
+  id           String              @id @default(cuid())
+  automationId String
+  accountId    String
+  contactId    String?
+  status       AutomationLogStatus
+  errorMessage String?             @db.Text
+  createdAt    DateTime            @default(now())
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([automationId, createdAt])
+  @@map("automation_logs")
+}
+
+model AutomationPendingExecution {
+  id               String                 @id @default(cuid())
+  automationId     String
+  accountId        String
+  contactId        String?
+  conversationId   String?
+  parentStepId     String?
+  branch           AutomationBranch?
+  nextStepPosition Int
+  context          Json                   @default("{}")
+  status           PendingExecutionStatus @default(PENDING)
+  runAt            DateTime
+  createdAt        DateTime               @default(now())
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([runAt, status])
+  @@map("automation_pending_executions")
+}
+
+enum AutomationLogStatus {
+  SUCCESS
+  FAILED
+}
+
+model BroadcastRecipient {
+  id                String          @id @default(cuid())
+  broadcastId       String
+  contactId         String?
+  whatsappMessageId String?         @unique
+  status            RecipientStatus @default(PENDING)
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  repliedAt         DateTime?
+  errorMessage      String?
+  createdAt         DateTime        @default(now())
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  contact   Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([broadcastId, status])
+  @@map("broadcast_recipients")
+}
+
+enum WhatsAppStatus {
+  CONNECTED
+  DISCONNECTED
+}
+
+model WhatsAppConfig {
+  id                    String         @id @default(cuid())
+  accountId             String         @unique
+  phoneNumberId         String         @unique
+  wabaId                String?
+  accessTokenEncrypted  String         @db.Text
+  // Per-company Meta Developer App secret, encrypted at rest. Used to verify
+  // the single shared webhook endpoint's x-hub-signature-256 per company
+  // (each company owns its own Meta Developer App) instead of a global
+  // META_APP_SECRET env var.
+  metaAppSecretEncrypted String?       @db.Text
+  verifyToken           String?
+  status                WhatsAppStatus @default(DISCONNECTED)
+  connectedAt           DateTime?
+  registeredAt          DateTime?
+  subscribedAppsAt      DateTime?
+  lastRegistrationError String?        @db.Text
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_configs")
+}
+
+model CustomField {
+  id        String   @id @default(cuid())
+  accountId String
+  fieldName String
+  fieldType String   @default("text")
+  createdAt DateTime @default(now())
+
+  account Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  values  ContactCustomValue[]
+
+  @@unique([accountId, fieldName])
+  @@map("custom_fields")
+}
+
+model ContactCustomValue {
+  id            String  @id @default(cuid())
+  contactId     String
+  customFieldId String
+  value         String?
+
+  contact     Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  customField CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, customFieldId])
+  @@map("contact_custom_values")
+}
+
+enum TemplateCategory {
+  MARKETING
+  UTILITY
+  AUTHENTICATION
+}
+
+enum TemplateStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+  DISABLED
+  IN_APPEAL
+  PENDING_DELETION
+}
+
+enum TemplateHeaderType {
+  TEXT
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  accountId  String
+  contactId  String?
+  phone      String
+  purpose    String    @default("verification")
+  codeHash   String
+  salt       String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, phone, purpose, createdAt])
+  @@index([expiresAt, consumedAt])
+  @@map("otp_challenges")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  accountId  String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@index([accountId, entityType, createdAt])
+  @@map("audit_logs")
+}
+
+// One row per message-consuming event (inbox send, broadcast send, API send,
+// automation step). Drives the manual quota counter, platform analytics, and a
+// future automated billing ledger.
+// A manual quota purchase/transaction recorded by the Platform Admin. Every
+// time the admin raises (or resets) an account's message quota, they log how
+// much the customer paid and the validity period (1y / 2y / lifetime). This is
+// the ledger a future automated billing system can read and extend.
+model QuotaPurchase {
+  id              String   @id @default(cuid())
+  accountId       String
+  createdByUserId String?
+
+  amountPaid     Float   @default(0)
+  currency       String  @default("INR")
+  quotaBefore    Int     @default(0)
+  quotaAfter     Int     @default(0)
+  // How long this purchase is valid, in months (0 = lifetime/no expiry).
+  validityMonths Int     @default(12)
+  validUntil     DateTime?
+  note           String? @db.Text
+  createdAt      DateTime @default(now())
+
+  account    Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("QuotaPurchaseCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@map("quota_purchases")
+}
+
+model MessageUsageLog {
+  id             String   @id @default(cuid())
+  accountId      String
+  userId         String?
+  feature        String   // INBOX | BROADCAST | API | AUTOMATION
+  recipientPhone String?
+  count          Int      @default(1)
+  status         String   @default("SENT") // SENT | FAILED | QUOTA_BLOCKED
+  messageId      String?
+  createdAt      DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt])
+  @@index([accountId, feature, createdAt])
+  @@index([feature, createdAt])
+  @@map("message_usage_logs")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  accountId String
+  userId    String
+  type      String
+  title     String
+  body      String    @db.Text
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([accountId, createdAt])
+  @@map("notifications")
+}
+
+model MessageTemplate {
+  id              String              @id @default(cuid())
+  accountId       String
+  name            String
+  category        TemplateCategory    @default(MARKETING)
+  language        String              @default("en_US")
+  headerType      TemplateHeaderType?
+  headerContent   String?
+  bodyText        String              @db.Text
+  footerText      String?
+  buttons         Json?
+  status          TemplateStatus      @default(DRAFT)
+  sampleValues    Json?
+  metaTemplateId  String?
+  rejectionReason String?             @db.Text
+  qualityScore    String?
+  submissionError String?             @db.Text
+  lastSubmittedAt DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  broadcasts Broadcast[]
+
+  @@unique([accountId, name, language])
+  @@map("message_templates")
+}
+
+model ContactNote {
+  id        String   @id @default(cuid())
+  contactId String
+  authorId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id])
+
+  @@index([contactId])
+  @@map("contact_notes")
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+model Pipeline {
+  id        String   @id @default(cuid())
+  accountId String
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  account Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  stages  PipelineStage[]
+  deals   Deal[]
+
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id          String  @id @default(cuid())
+  pipelineId  String
+  name        String
+  position    Int
+  color       String  @default("#1F6F5C")
+  probability Int     @default(50)
+  isWonStage  Boolean @default(false)
+  isLostStage Boolean @default(false)
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  deals    Deal[]
+
+  @@index([pipelineId, position])
+  @@map("pipeline_stages")
+}
+
+model Deal {
+  id         String     @id @default(cuid())
+  accountId  String
+  pipelineId String
+  stageId    String
+  contactId  String?
+  title      String
+  value      Int        @default(0)
+  status     DealStatus @default(OPEN)
+  closedAt   DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  account  Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  pipeline Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  stage    PipelineStage @relation(fields: [stageId], references: [id])
+  contact  Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([pipelineId, stageId])
+  @@map("deals")
+}
+
+model ApiKey {
+  id              String    @id @default(cuid())
+  accountId       String
+  createdByUserId String?
+  name            String
+  keyPrefix       String
+  keyHash         String    @unique
+  scopes          Json
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("api_keys")
+}

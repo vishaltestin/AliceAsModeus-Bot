@@ -1,0 +1,262 @@
+{
+  "info": {
+    "_postman_id": "wacrm-api-collection-20260806",
+    "name": "wacrm API v1",
+    "description": "Public REST API for wacrm — a multi-tenant WhatsApp CRM.\n\nAuthenticate every request with your API key as a Bearer token. Keys are created and scoped in Settings → API Keys.\n\nCollection variables:\n- baseUrl : your wacrm instance root, e.g. https://your-wacrm-domain.example.com\n- apiKey  : a scoped API key, e.g. wacrm_live_...\n\nSet the two variables before running a request. Start with GET /api/v1/me to confirm the key works.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Verify a key (GET /api/v1/me)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "me"]
+        },
+        "description": "Returns the account and the scopes granted to this key. Requires no scope. Use it to confirm the key and base URL before testing anything else."
+      }
+    },
+    {
+      "name": "List contacts (GET /api/v1/contacts)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/contacts?limit=50",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "contacts"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50",
+              "description": "Max rows to return (1-200, default 50)"
+            }
+          ]
+        },
+        "description": "Requires `contacts:read`. Lists contacts in the account, newest first."
+      }
+    },
+    {
+      "name": "Create or update a contact (POST /api/v1/contacts)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+14155550123\",\n  \"name\": \"Jordan Smith\",\n  \"email\": \"jordan@example.com\",\n  \"company\": \"Acme Corp\",\n  \"category\": \"PROSPECT\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/contacts",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "contacts"]
+        },
+        "description": "Requires `contacts:write`. Upserts a contact keyed by normalized phone number. Valid categories: LEAD, PROSPECT, CUSTOMER, VIP, OTHER."
+      }
+    },
+    {
+      "name": "List conversations (GET /api/v1/conversations)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/conversations?limit=50",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "conversations"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50",
+              "description": "Max rows to return (1-200, default 50)"
+            }
+          ]
+        },
+        "description": "Requires `conversations:read`. Lists conversations with their linked contact, ordered by most recently updated."
+      }
+    },
+    {
+      "name": "Read messages (GET /api/v1/messages)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/messages?limit=50",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "messages"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50",
+              "description": "Max rows to return (1-200, default 50)"
+            },
+            {
+              "key": "conversation_id",
+              "value": "",
+              "description": "Optional. Filter messages to one conversation."
+            }
+          ]
+        },
+        "description": "Requires `messages:read`. Reads recent messages across the account (or a single conversation when conversation_id is given)."
+      }
+    },
+    {
+      "name": "Send a text message (POST /api/v1/messages)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+14155550123\",\n  \"text\": \"Thanks for reaching out — our team will be with you shortly.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/messages",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "messages"]
+        },
+        "description": "Requires `messages:send`. Sends free-form text. Only allowed within WhatsApp's 24-hour customer-service window; returns 409 outside it. Use a template instead for anything outside that window."
+      }
+    },
+    {
+      "name": "Send a template message (POST /api/v1/messages)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+14155550123\",\n  \"template_id\": \"template_id\",\n  \"template_params\": [\"Jordan\", \"#1042\"]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/messages",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "messages"]
+        },
+        "description": "Requires `messages:send`. Sends an approved message template by id. Templates bypass the 24-hour window. template_params are ordered by the template's {{1}}, {{2}} body variables."
+      }
+    },
+    {
+      "name": "Launch a template broadcast (POST /api/v1/broadcasts)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"templateName\": \"order_update\",\n  \"language\": \"en_US\",\n  \"phones\": [\"+14155550123\", \"+14155550124\"],\n  \"variables\": [[\"Jordan\", \"#1042\"], [\"Alex\", \"#1043\"]]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/broadcasts",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "broadcasts"]
+        },
+        "description": "Requires `broadcasts:send`. Sends an approved template to up to 1,000 phones. `variables` is a two-dimensional array, one sub-array per phone, ordered by the template's body variables. Returns a broadcast id plus sent/failed counts."
+      }
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{apiKey}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://your-wacrm-domain.example.com",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "wacrm_live_replace_with_your_key",
+      "type": "string"
+    }
+  ]
+}
